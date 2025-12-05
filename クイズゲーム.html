@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>クイズゲーム</title>
+  <style>
+    body {
+  font-family: Arial, sans-serif;
+  background: #f0f8ff;
+  text-align: center;
+}
+
+.container {
+  max-width: 600px;
+  margin: auto;
+  padding: 20px;
+}
+
+button {
+  padding: 10px 20px;
+  margin: 10px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.hidden {
+  display: none;
+}
+
+#options button {
+  display: block;
+  width: 100%;
+  margin: 5px 0;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Quiz Game</h1>
+    <button id="startBtn">Start a quiz</button><!--クイズ開始ボタン-->
+    <div id="quizArea" class="hidden"><!--クイズセクション　最初は非表示-->
+      <div id="question"></div>
+      <div id="options"></div>
+    </div>
+    <div id="resultArea" class="hidden"></div><!--最終スコア-->
+    <div id="historyArea" class="hidden"></div><!--回答履歴-->
+    <div id="actionButtons" class="hidden"><!--スコア保存、再挑戦-->
+      <button id="saveScoreBtn">Save the score</button>
+      <button id="restartBtn">Play Again</button>
+    </div>
+    <!--各ボタンに名前を付けてる-->
+  </div>
+  <script src="script.js"></script>
+</body>
+<script>
+    // クイズデータ (array of objects)
+const quizData = [
+  { question: "What is the capital city in Japan?", options: ["Osaka", "Tokyo", "Kyoto", "Nagoya"], answer: "Tokyo" },
+  { question: "3+5?", options: ["5", "8", "10", "7"], answer: "8" },
+  { question: "What number is tres meaning?", options: ["2", "3", "4", "5"], answer: "3" },
+  { question: "What is the altitude of Mount Fuji?", options: ["3", "3776", "3477", "4789"], answer: "3776" },
+  { question: "What is the meaning og H in HTML?", options: ["Hyper", "High", "Home", "Human"], answer: "Hyper" }
+];
+
+// 状態管理
+let currentIndex = 0;
+let score = 0;
+let userAnswers = [];
+
+// 要素取得
+const startBtn = document.getElementById("startBtn");
+const quizArea = document.getElementById("quizArea");
+const questionEl = document.getElementById("question");
+const optionsEl = document.getElementById("options");
+const resultArea = document.getElementById("resultArea");
+const historyArea = document.getElementById("historyArea");
+const actionButtons = document.getElementById("actionButtons");
+const saveScoreBtn = document.getElementById("saveScoreBtn");
+const restartBtn = document.getElementById("restartBtn");
+//それぞれに変数をつけて自由に操作できるようにしている。
+// クイズ開始
+startBtn.addEventListener("click", () => {
+  startBtn.classList.add("hidden");
+  quizArea.classList.remove("hidden");
+  showQuestion();
+});
+//スタートボタンをなくし、クイズセクションを表示
+
+// 問題表示
+function showQuestion() {
+  const currentQuiz = quizData[currentIndex];
+  questionEl.textContent = currentQuiz.question;//新しい問題を表示
+  optionsEl.innerHTML = ""; //古い問題の選択肢を消してる
+//選択肢ボタンの生成
+  currentQuiz.options.forEach(option => {
+    const btn = document.createElement("button");
+    btn.textContent = option;
+    btn.addEventListener("click", () => checkAnswer(option));//クリックしたボタンをcheckAnswerに入れる
+    optionsEl.appendChild(btn);
+  });
+}
+
+// 回答チェック
+function checkAnswer(selected) {
+  const correct = quizData[currentIndex].answer;
+  userAnswers.push({ 
+    question: quizData[currentIndex].question, 
+    selected: selected, 
+    correct: correct //自分が選んだ選択肢と答えを回答履歴に保存
+  });
+
+  if (selected === correct) {
+    score++;
+  }//もし正解したら、スコアに1ポイント加算
+
+  currentIndex++;//問題番号を一つずつ進め、次の問題を表示
+
+  if (currentIndex < quizData.length) {
+    showQuestion();
+  } else {
+    showResult();
+  }//まだ問題があったらshoQuestion,終わったらshowResult
+}
+
+// 結果表示
+function showResult() {
+  quizArea.classList.add("hidden");
+  resultArea.classList.remove("hidden");
+  historyArea.classList.remove("hidden");
+  actionButtons.classList.remove("hidden");
+
+  const percent = (score / quizData.length) * 100;
+  resultArea.innerHTML = `<h2>your score: ${score}/${quizData.length} (${percent}%)</h2>`;
+
+  // for文で履歴を表示
+  historyArea.innerHTML = "<h3>answered</h3>";
+  for (let i = 0; i < userAnswers.length; i++) {
+    const ans = userAnswers[i];
+    historyArea.innerHTML += `<p>Q${i+1}: ${ans.question}<br>
+      your answer: ${ans.selected} | correct answer: ${ans.correct}</p>`;
+  }
+}
+
+// スコア保存 (while文を使って例示)
+saveScoreBtn.addEventListener("click", () => {
+  let savedScores = JSON.parse(localStorage.getItem("quizScores")) || [];
+  savedScores.push(score);
+  localStorage.setItem("quizScores", JSON.stringify(savedScores));
+
+  let i = 0;
+  while (i < savedScores.length) {
+    console.log(`保存されたスコア${i+1}: ${savedScores[i]}`);
+    i++;
+  }
+  alert("saved your score!");
+});
+
+// リスタート
+restartBtn.addEventListener("click", () => {
+  currentIndex = 0;
+  score = 0;
+  userAnswers = [];
+  resultArea.classList.add("hidden");
+  historyArea.classList.add("hidden");
+  actionButtons.classList.add("hidden");
+  quizArea.classList.remove("hidden");
+  showQuestion();
+});
+</script>
+</html>
