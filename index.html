@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <title>curling game</title>
@@ -165,7 +165,7 @@ function startGame() {
 function showEndScreen(isClear, score) {
   document.getElementById("gameCanvas").style.display = "none";
 
-  document.getElementById("resultText").textContent = isClear ? "クリア！🎉" : "ゲームオーバー😢";
+  document.getElementById("resultText").textContent = isClear ? "Clear！🎉" : "Game Over😢";
   document.getElementById("currentScoreVal").textContent = score + " pts";
 
   const prev = loadHighScore();
@@ -411,3 +411,4 @@ renderHighScore();
 </script>
 </body>
 </html>
+
