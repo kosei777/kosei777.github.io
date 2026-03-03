@@ -1,170 +1,413 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>クイズゲーム</title>
-  <style>
-    body {
-  font-family: Arial, sans-serif;
-  background: #f0f8ff;
-  text-align: center;
-}
+<meta charset="UTF-8" />
+<title>カーリングゲーム</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: #ffffff;
+    font-family: sans-serif;
+  }
 
-.container {
-  max-width: 600px;
-  margin: auto;
-  padding: 20px;
-}
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    background: #ffffff;
+  }
 
-button {
-  padding: 10px 20px;
-  margin: 10px;
-  font-size: 16px;
-  cursor: pointer;
-}
+  /* ---- Start screen ---- */
+  #startScreen h1 { font-size: 60px; margin-bottom: 6px; }
+  #startScreen button { font-size: 28px; padding: 10px 30px; cursor: pointer; margin-top: 20px; }
 
-.hidden {
-  display: none;
-}
+  #startHighScore {
+    font-size: 22px;
+    color: #555;
+    margin-top: 8px;
+  }
+  #startHighScore span {
+    font-weight: bold;
+    color: #c62828;
+  }
 
-#options button {
-  display: block;
-  width: 100%;
-  margin: 5px 0;
-}
-  </style>
+  /* ---- End screen ---- */
+  #endScreen h1      { font-size: 50px; margin-bottom: 6px; }
+  #endScreen button  { font-size: 24px; padding: 10px 25px; cursor: pointer; margin-top: 16px; }
+
+  #scoreBlock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-top: 10px;
+  }
+  #scoreBlock .score-label { font-size: 18px; color: #555; }
+  #scoreBlock .score-val   { font-size: 48px; font-weight: bold; color: #1565c0; }
+
+  #newRecordBadge {
+    font-size: 20px;
+    font-weight: bold;
+    color: #fff;
+    background: #e65100;
+    padding: 4px 16px;
+    border-radius: 20px;
+    display: none;
+    margin-top: 4px;
+  }
+
+  #endHighScore {
+    font-size: 18px;
+    color: #555;
+    margin-top: 4px;
+  }
+  #endHighScore span { font-weight: bold; color: #c62828; }
+
+  /* ---- Canvas ---- */
+  #gameCanvas {
+    display: none;
+    position: fixed;
+    inset: 0;
+  }
+</style>
 </head>
 <body>
-  <div class="container">
-    <h1>Quiz Game</h1>
-    <button id="startBtn">Start a quiz</button><!--クイズ開始ボタン-->
-    <div id="quizArea" class="hidden"><!--クイズセクション　最初は非表示-->
-      <div id="question"></div>
-      <div id="options"></div>
-    </div>
-    <div id="resultArea" class="hidden"></div><!--最終スコア-->
-    <div id="historyArea" class="hidden"></div><!--回答履歴-->
-    <div id="actionButtons" class="hidden"><!--スコア保存、再挑戦-->
-      <button id="saveScoreBtn">Save the score</button>
-      <button id="restartBtn">Play Again</button>
-    </div>
-    <!--各ボタンに名前を付けてる-->
+
+<!-- Start screen -->
+<div id="startScreen" class="screen">
+  <h1>カーリング</h1>
+  <p id="startHighScore">ハイスコア：<span id="startHSVal">—</span></p>
+  <button onclick="startGame()">スタート</button>
+</div>
+
+<!-- Game canvas -->
+<canvas id="gameCanvas"></canvas>
+
+<!-- End screen -->
+<div id="endScreen" class="screen" style="display:none;">
+  <h1 id="resultText"></h1>
+
+  <div id="scoreBlock">
+    <span class="score-label">今回のスコア</span>
+    <span class="score-val" id="currentScoreVal">0</span>
+    <div id="newRecordBadge">🏆 新記録！</div>
+    <p id="endHighScore">ハイスコア：<span id="endHSVal">—</span></p>
   </div>
-  <script src="script.js"></script>
-</body>
+
+  <button onclick="restartGame()">もう一度</button>
+</div>
+
 <script>
-    // クイズデータ (array of objects)
-const quizData = [
-  { question: "What is the capital city in Japan?", options: ["Osaka", "Tokyo", "Kyoto", "Nagoya"], answer: "Tokyo" },
-  { question: "3+5?", options: ["5", "8", "10", "7"], answer: "8" },
-  { question: "What number is tres meaning?", options: ["2", "3", "4", "5"], answer: "3" },
-  { question: "What is the altitude of Mount Fuji?", options: ["3", "3776", "3477", "4789"], answer: "3776" },
-  { question: "What is the meaning og H in HTML?", options: ["Hyper", "High", "Home", "Human"], answer: "Hyper" }
-];
+/* ==============================
+   High-score helpers
+============================== */
+const HS_KEY = "curling_highscore";
 
-// 状態管理
-let currentIndex = 0;
-let score = 0;
-let userAnswers = [];
-
-// 要素取得
-const startBtn = document.getElementById("startBtn");
-const quizArea = document.getElementById("quizArea");
-const questionEl = document.getElementById("question");
-const optionsEl = document.getElementById("options");
-const resultArea = document.getElementById("resultArea");
-const historyArea = document.getElementById("historyArea");
-const actionButtons = document.getElementById("actionButtons");
-const saveScoreBtn = document.getElementById("saveScoreBtn");
-const restartBtn = document.getElementById("restartBtn");
-//それぞれに変数をつけて自由に操作できるようにしている。
-// クイズ開始
-startBtn.addEventListener("click", () => {
-  startBtn.classList.add("hidden");
-  quizArea.classList.remove("hidden");
-  showQuestion();
-});
-//スタートボタンをなくし、クイズセクションを表示
-
-// 問題表示
-function showQuestion() {
-  const currentQuiz = quizData[currentIndex];
-  questionEl.textContent = currentQuiz.question;//新しい問題を表示
-  optionsEl.innerHTML = ""; //古い問題の選択肢を消してる
-//選択肢ボタンの生成
-  currentQuiz.options.forEach(option => {
-    const btn = document.createElement("button");
-    btn.textContent = option;
-    btn.addEventListener("click", () => checkAnswer(option));//クリックしたボタンをcheckAnswerに入れる
-    optionsEl.appendChild(btn);
-  });
+function loadHighScore() {
+  const v = localStorage.getItem(HS_KEY);
+  return v !== null ? parseInt(v, 10) : null;
 }
 
-// 回答チェック
-function checkAnswer(selected) {
-  const correct = quizData[currentIndex].answer;
-  userAnswers.push({ 
-    question: quizData[currentIndex].question, 
-    selected: selected, 
-    correct: correct //自分が選んだ選択肢と答えを回答履歴に保存
-  });
-
-  if (selected === correct) {
-    score++;
-  }//もし正解したら、スコアに1ポイント加算
-
-  currentIndex++;//問題番号を一つずつ進め、次の問題を表示
-
-  if (currentIndex < quizData.length) {
-    showQuestion();
-  } else {
-    showResult();
-  }//まだ問題があったらshoQuestion,終わったらshowResult
+function saveHighScore(score) {
+  localStorage.setItem(HS_KEY, score);
 }
 
-// 結果表示
-function showResult() {
-  quizArea.classList.add("hidden");
-  resultArea.classList.remove("hidden");
-  historyArea.classList.remove("hidden");
-  actionButtons.classList.remove("hidden");
+function renderHighScore() {
+  const hs = loadHighScore();
+  const display = hs !== null ? hs + " pts" : "—";
+  document.getElementById("startHSVal").textContent = display;
+  document.getElementById("endHSVal").textContent   = display;
+}
 
-  const percent = (score / quizData.length) * 100;
-  resultArea.innerHTML = `<h2>your score: ${score}/${quizData.length} (${percent}%)</h2>`;
+/* ==============================
+   Scoring
+   bullseye  (innerRadius)  : 100 pts
+   middle ring              :  60 pts
+   outer ring               :  30 pts
+   miss                     :   0 pts
+============================== */
+function calcScore(d) {
+  if (d + stone.radius <= target.innerRadius)  return 100;
+  if (d + stone.radius <= target.middleRadius) return 60;
+  if (d + stone.radius <= target.outerRadius)  return 30;
+  return 0;
+}
 
-  // for文で履歴を表示
-  historyArea.innerHTML = "<h3>answered</h3>";
-  for (let i = 0; i < userAnswers.length; i++) {
-    const ans = userAnswers[i];
-    historyArea.innerHTML += `<p>Q${i+1}: ${ans.question}<br>
-      your answer: ${ans.selected} | correct answer: ${ans.correct}</p>`;
+/* ==============================
+   Canvas / game globals
+============================== */
+const canvas = document.getElementById("gameCanvas");
+const ctx    = canvas.getContext("2d");
+
+let stone, target, startLineX;
+let lastMouseX = 0, lastMouseY = 0;
+let gameStarted = false;
+let hasMoved    = false;
+let animId      = null;
+let gameOver    = false;
+
+/* ==============================
+   Screen switching
+============================== */
+function startGame() {
+  document.getElementById("startScreen").style.display = "none";
+  document.getElementById("endScreen").style.display   = "none";
+  document.getElementById("gameCanvas").style.display  = "block";
+  renderHighScore();
+  initGame();
+}
+
+function showEndScreen(isClear, score) {
+  document.getElementById("gameCanvas").style.display = "none";
+
+  document.getElementById("resultText").textContent = isClear ? "クリア！🎉" : "ゲームオーバー😢";
+  document.getElementById("currentScoreVal").textContent = score + " pts";
+
+  const prev = loadHighScore();
+  const isNew = score > 0 && (prev === null || score > prev);
+  if (isNew) saveHighScore(score);
+  renderHighScore();
+
+  document.getElementById("newRecordBadge").style.display = isNew ? "block" : "none";
+  document.getElementById("endScreen").style.display = "flex";
+}
+
+function restartGame() { startGame(); }
+
+/* ==============================
+   Init
+============================== */
+function initGame() {
+  if (animId !== null) {
+    cancelAnimationFrame(animId);
+    animId = null;
+  }
+
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  startLineX = 250;
+
+  stone = {
+    x: 120,
+    y: canvas.height / 2,
+    radius: 22,
+    vx: 0,
+    vy: 0,
+    isDragging: false,
+    offsetX: 0,
+    offsetY: 0,
+    lockedOut: false
+  };
+
+  target = {
+    x: canvas.width - 150,
+    y: canvas.height / 2,
+    outerRadius:  80,
+    middleRadius: 50,
+    innerRadius:  20
+  };
+
+  gameStarted = false;
+  hasMoved    = false;
+  gameOver    = false;
+
+  setTimeout(() => { gameStarted = true; }, 500);
+
+  loop();
+}
+
+window.addEventListener("resize", initGame);
+
+/* ==============================
+   Draw
+============================== */
+function drawHUD() {
+  const hs = loadHighScore();
+  if (hs === null) return;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.45)";
+  ctx.font = "bold 16px sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText("ハイスコア: " + hs + " pts", canvas.width - 16, 28);
+  ctx.restore();
+}
+
+function drawStartLine() {
+  ctx.beginPath();
+  ctx.strokeStyle = "red";
+  ctx.lineWidth = 4;
+  ctx.moveTo(startLineX, 0);
+  ctx.lineTo(startLineX, canvas.height);
+  ctx.stroke();
+
+  ctx.fillStyle = "red";
+  ctx.font = "bold 14px sans-serif";
+  ctx.fillText("投球ライン", startLineX + 6, 20);
+}
+
+function drawTarget() {
+  ctx.beginPath();
+  ctx.arc(target.x, target.y, target.outerRadius, 0, Math.PI * 2);
+  ctx.fillStyle = "#1565c0";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(target.x, target.y, target.middleRadius, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#1565c0";
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(target.x, target.y, target.innerRadius, 0, Math.PI * 2);
+  ctx.fillStyle = "#c62828";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(target.x, target.y, 3, 0, Math.PI * 2);
+  ctx.fillStyle = "#000";
+  ctx.fill();
+
+  // Ring point labels
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.font = "bold 11px sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fillText("100", target.x, target.y + 4);
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.fillText("60",  target.x, target.y - target.innerRadius - 6);
+  ctx.fillText("30",  target.x, target.y - target.middleRadius - 6);
+  ctx.restore();
+}
+
+function drawStone() {
+  ctx.beginPath();
+  ctx.arc(stone.x, stone.y, stone.radius, 0, Math.PI * 2);
+  ctx.fillStyle = stone.lockedOut ? "#b71c1c" : "#d32f2f";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(stone.x, stone.y - 6, stone.radius / 2, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffeb3b";
+  ctx.fill();
+}
+
+/* ==============================
+   Utils
+============================== */
+function dist(x1, y1, x2, y2) {
+  return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+}
+
+/* ==============================
+   Result check
+============================== */
+function checkResult() {
+  const d       = dist(stone.x, stone.y, target.x, target.y);
+  const isClear = d + stone.radius <= target.outerRadius;
+  const score   = calcScore(d);
+  showEndScreen(isClear, score);
+}
+
+/* ==============================
+   Physics
+============================== */
+function updateStone() {
+  if (gameOver) return;
+
+  if (stone.x > startLineX) {
+    stone.lockedOut  = true;
+    stone.isDragging = false;
+  }
+
+  if (!stone.isDragging) {
+    stone.x += stone.vx;
+    stone.y += stone.vy;
+
+    stone.vx *= 0.97;
+    stone.vy *= 0.97;
+
+    if (stone.x - stone.radius < 0)               { stone.x = stone.radius;               stone.vx *= -0.7; }
+    if (stone.x + stone.radius > canvas.width)     { stone.x = canvas.width - stone.radius; stone.vx *= -0.7; }
+    if (stone.y - stone.radius < 0)               { stone.y = stone.radius;               stone.vy *= -0.7; }
+    if (stone.y + stone.radius > canvas.height)    { stone.y = canvas.height - stone.radius; stone.vy *= -0.7; }
+
+    if (Math.abs(stone.vx) < 0.05 && Math.abs(stone.vy) < 0.05 && stone.vx !== 0) {
+      stone.vx = 0;
+      stone.vy = 0;
+      if (gameStarted && hasMoved) {
+        gameOver = true;
+        setTimeout(checkResult, 400);
+      }
+    }
   }
 }
 
-// スコア保存 (while文を使って例示)
-saveScoreBtn.addEventListener("click", () => {
-  let savedScores = JSON.parse(localStorage.getItem("quizScores")) || [];
-  savedScores.push(score);
-  localStorage.setItem("quizScores", JSON.stringify(savedScores));
+/* ==============================
+   Input
+============================== */
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  if (e.touches) e = e.touches[0];
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
 
-  let i = 0;
-  while (i < savedScores.length) {
-    console.log(`保存されたスコア${i+1}: ${savedScores[i]}`);
-    i++;
+canvas.addEventListener("mousedown",  startDrag);
+canvas.addEventListener("touchstart", startDrag, { passive: true });
+
+function startDrag(e) {
+  if (gameOver || stone.lockedOut) return;
+  const pos = getPos(e);
+  if (dist(pos.x, pos.y, stone.x, stone.y) <= stone.radius) {
+    stone.isDragging = true;
+    stone.offsetX = pos.x - stone.x;
+    stone.offsetY = pos.y - stone.y;
+    lastMouseX = pos.x;
+    lastMouseY = pos.y;
+    hasMoved = true;
   }
-  alert("saved your score!");
-});
+}
 
-// リスタート
-restartBtn.addEventListener("click", () => {
-  currentIndex = 0;
-  score = 0;
-  userAnswers = [];
-  resultArea.classList.add("hidden");
-  historyArea.classList.add("hidden");
-  actionButtons.classList.add("hidden");
-  quizArea.classList.remove("hidden");
-  showQuestion();
-});
+canvas.addEventListener("mousemove",  drag);
+canvas.addEventListener("touchmove",  drag, { passive: true });
+
+function drag(e) {
+  if (!stone.isDragging || stone.lockedOut) return;
+  const pos = getPos(e);
+  stone.x  = pos.x - stone.offsetX;
+  stone.y  = pos.y - stone.offsetY;
+  stone.vx = pos.x - lastMouseX;
+  stone.vy = pos.y - lastMouseY;
+  lastMouseX = pos.x;
+  lastMouseY = pos.y;
+}
+
+canvas.addEventListener("mouseup",  endDrag);
+canvas.addEventListener("touchend", endDrag);
+function endDrag() { stone.isDragging = false; }
+
+/* ==============================
+   Main loop
+============================== */
+function loop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawHUD();
+  drawStartLine();
+  drawTarget();
+  drawStone();
+  updateStone();
+  animId = requestAnimationFrame(loop);
+}
+
+// Show high score on page load
+renderHighScore();
 </script>
+</body>
 </html>
