@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8" />
-<title>カーリングゲーム</title>
+<title>curling game</title>
 <style>
   * { box-sizing: border-box; }
   body {
@@ -80,9 +80,9 @@
 
 <!-- Start screen -->
 <div id="startScreen" class="screen">
-  <h1>カーリング</h1>
-  <p id="startHighScore">ハイスコア：<span id="startHSVal">—</span></p>
-  <button onclick="startGame()">スタート</button>
+  <h1>Curling</h1>
+  <p id="startHighScore">high score：<span id="startHSVal">—</span></p>
+  <button onclick="startGame()">start</button>
 </div>
 
 <!-- Game canvas -->
@@ -93,13 +93,13 @@
   <h1 id="resultText"></h1>
 
   <div id="scoreBlock">
-    <span class="score-label">今回のスコア</span>
+    <span class="score-label">your score</span>
     <span class="score-val" id="currentScoreVal">0</span>
-    <div id="newRecordBadge">🏆 新記録！</div>
-    <p id="endHighScore">ハイスコア：<span id="endHSVal">—</span></p>
+    <div id="newRecordBadge">🏆 new record！</div>
+    <p id="endHighScore">high score：<span id="endHSVal">—</span></p>
   </div>
 
-  <button onclick="restartGame()">もう一度</button>
+  <button onclick="restartGame()">continue</button>
 </div>
 
 <script>
@@ -234,7 +234,7 @@ function drawHUD() {
   ctx.fillStyle = "rgba(0,0,0,0.45)";
   ctx.font = "bold 16px sans-serif";
   ctx.textAlign = "right";
-  ctx.fillText("ハイスコア: " + hs + " pts", canvas.width - 16, 28);
+  ctx.fillText("high score: " + hs + " pts", canvas.width - 16, 28);
   ctx.restore();
 }
 
@@ -248,7 +248,7 @@ function drawStartLine() {
 
   ctx.fillStyle = "red";
   ctx.font = "bold 14px sans-serif";
-  ctx.fillText("投球ライン", startLineX + 6, 20);
+  ctx.fillText("throw line", startLineX + 6, 20);
 }
 
 function drawTarget() {
@@ -395,7 +395,7 @@ function endDrag() { stone.isDragging = false; }
 
 /* ==============================
    Main loop
-============================== */
+============================== */  
 function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawHUD();
